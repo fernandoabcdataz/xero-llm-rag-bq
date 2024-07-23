@@ -1,10 +1,11 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, GoogleCloudOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, GoogleCloudOptions, WorkerOptions, SetupOptions
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
 import requests
 import json
 from google.cloud import storage
+import logging
 
 # REPLACE THESE WITH YOUR CLIENT ID AND CLIENT SECRET
 CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
@@ -32,11 +33,20 @@ def fetch_data_from_endpoint(token, endpoint):
     return response.json()
 
 class FetchDataFromEndpoints(beam.DoFn):
-    def __init__(self, endpoints):
+    def __init__(self, endpoints, client_id, client_secret, token_url):
         self.endpoints = endpoints
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.token_url = token_url
+
+    def fetch_token(self):
+        client = BackendApplicationClient(client_id=self.client_id)
+        oauth = OAuth2Session(client=client)
+        token = oauth.fetch_token(token_url=self.token_url, client_id=self.client_id, client_secret=self.client_secret)
+        return token
 
     def start_bundle(self):
-        self.token = fetch_token()
+        self.token = self.fetch_token()
 
     def process(self, element):
         for name, endpoint in self.endpoints.items():
@@ -53,8 +63,8 @@ class WriteJSONToGCS(beam.DoFn):
         self.client_name = client_name
 
     def start_bundle(self):
-        self.client = storage.Client()
-        self.bucket = self.client.get_bucket(self.bucket_name)
+        self.storage_client = storage.Client()
+        self.bucket = self.storage_client.get_bucket(self.bucket_name)
 
     def process(self, element):
         file_name = f"{self.client_name}/{element['endpoint_name']}.json"
@@ -62,7 +72,7 @@ class WriteJSONToGCS(beam.DoFn):
         blob.upload_from_string(element['file_content'], content_type='application/json')
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
 
-def create_bucket_if_not_exists(bucket_name, project_id, location="australia-southeast1"):
+def create_bucket_if_not_exists(bucket_name, project_id, location):
     storage_client = storage.Client(project=project_id)
     
     try:
@@ -82,6 +92,16 @@ class XeroOptions(PipelineOptions):
             required=True,
             help='NAME OF THE CLIENT, USED IN BUCKET NAMING AND AS A PREFIX FOR DATAFLOW JOB NAME'
         )
+        parser.add_argument(
+            '--dataflow_region',
+            required=True,
+            help='THE REGION TO RUN THE DATAFLOW JOB IN'
+        )
+        parser.add_argument(
+            '--dataflow_zone',
+            required=True,
+            help='THE ZONE TO RUN THE DATAFLOW JOB IN'
+        )
 
 def run_pipeline():
     pipeline_options = XeroOptions()
@@ -94,26 +114,37 @@ def run_pipeline():
     project_id = google_cloud_options.project
 
     if not project_id:
-        raise ValueError("Please provide a project ID using --project argument")
+        raise ValueError("please provide a PROJECT ID using --project argument")
+
+    # ACCESS REGION AND ZONE FROM OUR CUSTOM OPTIONS
+    region = pipeline_options.dataflow_region
+    zone = pipeline_options.dataflow_zone
 
     # CONSTRUCT BUCKET NAME
     bucket_name = f"{project_id}--{client_name}--xero-data"
 
     # CREATE THE BUCKET IF IT DOESN'T EXIST
-    create_bucket_if_not_exists(bucket_name, project_id)
+    create_bucket_if_not_exists(bucket_name, project_id, region)
 
     # SET UP THE PIPELINE OPTIONS
     options = pipeline_options.view_as(PipelineOptions)
     options.view_as(StandardOptions).runner = 'DataflowRunner'
     google_cloud_options.temp_location = f'gs://{bucket_name}/temp'
     google_cloud_options.job_name = f'{client_name}-xero-data-pipeline'
+    google_cloud_options.region = region
 
-    p = beam.Pipeline(options=options)
+    worker_options = pipeline_options.view_as(WorkerOptions)
+    worker_options.zone = zone
+
+    # Add this line to include the setup file
+    pipeline_options.view_as(SetupOptions).setup_file = './setup.py'
+
+    p = beam.Pipeline(options=pipeline_options)
 
     results = (
         p
         | 'Start' >> beam.Create([None])
-        | 'FetchDataFromEndpoints' >> beam.ParDo(FetchDataFromEndpoints(ENDPOINTS))
+        | 'FetchDataFromEndpoints' >> beam.ParDo(FetchDataFromEndpoints(ENDPOINTS, CLIENT_ID, CLIENT_SECRET, TOKEN_URL))
     )
 
     # SAVE TO GOOGLE CLOUD STORAGE
@@ -122,4 +153,5 @@ def run_pipeline():
     p.run().wait_until_finish()
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.INFO)
     run_pipeline()

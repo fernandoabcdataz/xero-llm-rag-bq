@@ -1,5 +1,5 @@
 wheel
 apache-beam[gcp]
-requests
-requests-oauthlib
 google-cloud-storage
+requests
+requests_oauthlib
