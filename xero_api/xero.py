@@ -15,7 +15,7 @@ TOKEN_URL = 'https://identity.xero.com/connect/token'
 # DEFINE YOUR ENDPOINTS
 ENDPOINTS = {
     'bank_transactions': 'https://api.xero.com/api.xro/2.0/BankTransactions',
-    'invoices': 'https://api.xero.com/api.xro/2.0/Invoices',
+    # 'invoices': 'https://api.xero.com/api.xro/2.0/Invoices',
 }
 
 # FETCH TOKEN
@@ -38,6 +38,7 @@ class FetchDataFromEndpoints(beam.DoFn):
         self.client_id = client_id
         self.client_secret = client_secret
         self.token_url = token_url
+        self.processed_all_endpoints = False  # FLAG TO TRACK ENDPOINT PROCESSING
 
     def fetch_token(self):
         client = BackendApplicationClient(client_id=self.client_id)
@@ -47,10 +48,19 @@ class FetchDataFromEndpoints(beam.DoFn):
 
     def start_bundle(self):
         self.token = self.fetch_token()
+        self.processed_all_endpoints = False
 
     def process(self, element):
         for name, endpoint in self.endpoints.items():
+            if self.processed_all_endpoints:
+                # NO NEED TO PROCESS FURTHER ENDPOINTS IF ALL ARE DONE
+                break
             data = fetch_data_from_endpoint(self.token, endpoint)
+            if not data:
+                # CHECK FOR EMPTY DATA TO POTENTIALLY SIGNAL TERMINATION (IF APPLICABLE)
+                logging.info(f"No data received for endpoint: {name}. Assuming termination.")
+                self.processed_all_endpoints = True  # SET FLAG TO STOP FURTHER PROCESSING
+                break
             file_content = json.dumps(data, indent=2)
             yield {
                 'endpoint_name': name,
@@ -74,7 +84,7 @@ class WriteJSONToGCS(beam.DoFn):
 
 def create_bucket_if_not_exists(bucket_name, project_id, location):
     storage_client = storage.Client(project=project_id)
-    
+
     try:
         bucket = storage_client.get_bucket(bucket_name)
         print(f"Bucket {bucket_name} already exists")
@@ -107,7 +117,7 @@ def run_pipeline():
     pipeline_options = XeroOptions()
     
     # ACCESS THE CLIENT_NAME FROM OUR CUSTOM OPTIONS
-    client_name = pipeline_options.client_name
+    client_name = pipeline_options.view_as(XeroOptions).client_name
     
     # ACCESS THE PROJECT FROM THE GOOGLECLOUDOPTIONS
     google_cloud_options = pipeline_options.view_as(GoogleCloudOptions)
@@ -117,8 +127,8 @@ def run_pipeline():
         raise ValueError("please provide a PROJECT ID using --project argument")
 
     # ACCESS REGION AND ZONE FROM OUR CUSTOM OPTIONS
-    region = pipeline_options.dataflow_region
-    zone = pipeline_options.dataflow_zone
+    region = pipeline_options.view_as(XeroOptions).dataflow_region
+    zone = pipeline_options.view_as(XeroOptions).dataflow_zone
 
     # CONSTRUCT BUCKET NAME
     bucket_name = f"{project_id}--{client_name}--xero-data"
@@ -150,7 +160,7 @@ def run_pipeline():
     # SAVE TO GOOGLE CLOUD STORAGE
     results | 'WriteToGCS' >> beam.ParDo(WriteJSONToGCS(bucket_name, client_name))
 
-    p.run().wait_until_finish()
+    p.run()
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
