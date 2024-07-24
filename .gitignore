@@ -1,0 +1,6 @@
+Ignore everything
+/data/
+
+# # But keep these files and directories
+# !/xero_api/*
+# !setup.py
