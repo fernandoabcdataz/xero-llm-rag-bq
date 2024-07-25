@@ -1,0 +1,7 @@
+setup.py
+xero_pipeline.egg-info/PKG-INFO
+xero_pipeline.egg-info/SOURCES.txt
+xero_pipeline.egg-info/dependency_links.txt
+xero_pipeline.egg-info/entry_points.txt
+xero_pipeline.egg-info/requires.txt
+xero_pipeline.egg-info/top_level.txt

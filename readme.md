@@ -34,7 +34,7 @@ command 10:
 pip3 install -r requirements.txt
 
 command 11:
-python3 xero.py \
+python3 main.py \
     --project=abcdataz \
     --client_name=demo \
     --dataflow_region=australia-southeast1 \
