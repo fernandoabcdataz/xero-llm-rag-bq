@@ -9,15 +9,25 @@ import json
 from google.cloud import storage
 import time
 import os
+import traceback
 
 app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return 'Hello, World!'
 
 CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
 CLIENT_SECRET = '42rkPKJFTtcVFpWQd1hrRVuOfeG-kSC2QElL3p_VdeIAyTBt'
 TOKEN_URL = 'https://identity.xero.com/connect/token'
 
 ENDPOINTS = {
-    'bank_transactions': 'https://api.xero.com/api.xro/2.0/BankTransactions',
+    # 'bank_transactions': 'https://api.xero.com/api.xro/2.0/BankTransactions',
+    # 'contacts': 'https://api.xero.com/api.xro/2.0/Contacts',
+    # 'employees': 'https://api.xero.com/api.xro/2.0/Employees',
+    'balance_sheet': 'https://api.xero.com/api.xro/2.0/Reports/BalanceSheet',
+    'bank_summary': 'https://api.xero.com/api.xro/2.0/Reports/BankSummary',
+    'profit_loss': 'https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss',
 }
 
 def fetch_token():
@@ -88,67 +98,63 @@ class WriteJSONToGCS(beam.DoFn):
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
         logging.info(f"File {file_name} saved to GCS.")
 
-def create_bucket_if_not_exists(bucket_name, project_id, location):
+def create_bucket_if_not_exists(bucket_name, project_id):
     storage_client = storage.Client(project=project_id)
     try:
         bucket = storage_client.get_bucket(bucket_name)
         print(f"Bucket {bucket_name} already exists")
     except Exception:
-        bucket = storage_client.create_bucket(bucket_name, location=location)
+        bucket = storage_client.create_bucket(bucket_name)
         print(f"Bucket {bucket_name} created")
     return bucket
 
-class XeroOptions(PipelineOptions):
-    @classmethod
-    def _add_argparse_args(cls, parser):
-        parser.add_argument(
-            '--client_name',
-            required=True,
-            help='NAME OF THE CLIENT, USED IN BUCKET NAMING AND AS A PREFIX FOR JOB NAME'
-        )
-        parser.add_argument(
-            '--region',
-            required=True,
-            help='THE REGION TO RUN THE JOB IN'
-        )
-
 def run_pipeline():
-    # Read environment variables
-    client_name = os.getenv('CLIENT_NAME')
-    region = os.getenv('REGION')
-    project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+    try:
+        # Read environment variables
+        client_name = os.getenv('CLIENT_NAME')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 
-    if not project_id:
-        raise ValueError("please provide a PROJECT ID using --project argument")
+        if not client_name:
+            raise ValueError("CLIENT_NAME environment variable is required")
+        if not project_id:
+            raise ValueError("please provide a PROJECT ID using --project argument")
 
-    bucket_name = f"{project_id}--{client_name}--xero-data"
-    create_bucket_if_not_exists(bucket_name, project_id, region)
+        logging.info(f"starting pipeline for client: {client_name}, project_id: {project_id}")
 
-    options = PipelineOptions()
-    options.view_as(StandardOptions).runner = 'DirectRunner'
-    google_cloud_options = options.view_as(GoogleCloudOptions)
-    google_cloud_options.project = project_id
-    google_cloud_options.temp_location = f'gs://{bucket_name}/temp'
-    google_cloud_options.job_name = f'{client_name}-xero-data-pipeline'
-    google_cloud_options.region = region
+        bucket_name = f"{project_id}--{client_name}--xero-data"
+        create_bucket_if_not_exists(bucket_name, project_id)
 
-    options.view_as(SetupOptions).setup_file = './setup.py'
-    p = beam.Pipeline(options=options)
+        options = PipelineOptions()
+        options.view_as(StandardOptions).runner = 'DirectRunner'
 
-    results = (
-        p
-        | 'Start' >> beam.Create([None])
-        | 'FetchDataFromEndpoints' >> beam.ParDo(FetchDataFromEndpoints(ENDPOINTS, CLIENT_ID, CLIENT_SECRET, TOKEN_URL))
-    )
+        p = beam.Pipeline(options=options)
 
-    results | 'WriteToGCS' >> beam.ParDo(WriteJSONToGCS(bucket_name, client_name))
-    p.run().wait_until_finish()
+        results = (
+            p
+            | 'Start' >> beam.Create([None])
+            | 'FetchDataFromEndpoints' >> beam.ParDo(FetchDataFromEndpoints(ENDPOINTS, CLIENT_ID, CLIENT_SECRET, TOKEN_URL))
+        )
+
+        results | 'WriteToGCS' >> beam.ParDo(WriteJSONToGCS(bucket_name, client_name))
+        p.run().wait_until_finish()
+
+        logging.info("PIPELINE COMPLETED SUCCESSFULLY")
+
+    except Exception as e:
+        logging.error(f"Error running pipeline: {str(e)}")
+        logging.error(traceback.format_exc())
+        raise
 
 @app.route('/run', methods=['POST'])
 def trigger_pipeline():
-    run_pipeline()
-    return 'Pipeline started', 200
+    try:
+        run_pipeline()
+        return 'Pipeline started', 200
+    except Exception as e:
+        logging.error(f"Error triggering pipeline: {str(e)}")
+        return 'Internal Server Error', 500
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     logging.getLogger().setLevel(logging.INFO)
     app.run(host='0.0.0.0', port=8080)
