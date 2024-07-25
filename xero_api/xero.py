@@ -6,6 +6,7 @@ import requests
 import json
 from google.cloud import storage
 import logging
+import time
 
 # REPLACE THESE WITH YOUR CLIENT ID AND CLIENT SECRET
 CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
@@ -49,13 +50,18 @@ class FetchDataFromEndpoints(beam.DoFn):
     def start_bundle(self):
         self.token = self.fetch_token()
         self.processed_all_endpoints = False
+        logging.info("Token fetched and bundle started.")
 
     def process(self, element):
         for name, endpoint in self.endpoints.items():
             if self.processed_all_endpoints:
                 # NO NEED TO PROCESS FURTHER ENDPOINTS IF ALL ARE DONE
                 break
+            logging.info(f"Fetching data from endpoint: {endpoint}")
+            start_time = time.time()
             data = fetch_data_from_endpoint(self.token, endpoint)
+            end_time = time.time()
+            logging.info(f"Data fetched from {endpoint} in {end_time - start_time} seconds.")
             if not data:
                 # CHECK FOR EMPTY DATA TO POTENTIALLY SIGNAL TERMINATION (IF APPLICABLE)
                 logging.info(f"No data received for endpoint: {name}. Assuming termination.")
@@ -66,6 +72,7 @@ class FetchDataFromEndpoints(beam.DoFn):
                 'endpoint_name': name,
                 'file_content': file_content
             }
+            logging.info(f"Data processed for endpoint: {name}")
 
 class WriteJSONToGCS(beam.DoFn):
     def __init__(self, bucket_name, client_name):
@@ -75,12 +82,14 @@ class WriteJSONToGCS(beam.DoFn):
     def start_bundle(self):
         self.storage_client = storage.Client()
         self.bucket = self.storage_client.get_bucket(self.bucket_name)
+        logging.info("GCS client initialized and bucket accessed.")
 
     def process(self, element):
         file_name = f"{self.client_name}/{element['endpoint_name']}.json"
         blob = self.bucket.blob(file_name)
         blob.upload_from_string(element['file_content'], content_type='application/json')
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
+        logging.info(f"File {file_name} saved to GCS.")
 
 def create_bucket_if_not_exists(bucket_name, project_id, location):
     storage_client = storage.Client(project=project_id)
@@ -146,7 +155,7 @@ def run_pipeline():
     worker_options = pipeline_options.view_as(WorkerOptions)
     worker_options.zone = zone
 
-    # Add this line to include the setup file
+    # ADD THIS LINE TO INCLUDE THE SETUP FILE
     pipeline_options.view_as(SetupOptions).setup_file = './setup.py'
 
     p = beam.Pipeline(options=pipeline_options)
@@ -160,7 +169,7 @@ def run_pipeline():
     # SAVE TO GOOGLE CLOUD STORAGE
     results | 'WriteToGCS' >> beam.ParDo(WriteJSONToGCS(bucket_name, client_name))
 
-    p.run()
+    p.run().wait_until_finish()
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
