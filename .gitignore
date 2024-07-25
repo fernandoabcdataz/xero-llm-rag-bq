@@ -1,5 +1,6 @@
 Ignore everything
 /data/
+/xero_api/xero_pipeline.egg-info/
 
 # # But keep these files and directories
 # !/xero_api/*

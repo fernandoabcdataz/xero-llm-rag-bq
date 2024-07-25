@@ -34,9 +34,10 @@ command 10:
 pip3 install -r requirements.txt
 
 command 11:
-python xero.py \
+python3 xero.py \
     --project=abcdataz \
     --client_name=demo \
     --dataflow_region=australia-southeast1 \
-    --dataflow_zone=australia-southeast1-a \
-    --runner=DataflowRunner
+    --dataflow_zone=australia-southeast1-c \
+    --runner=DataflowRunner \
+    --worker_machine_type=n1-standard-4
