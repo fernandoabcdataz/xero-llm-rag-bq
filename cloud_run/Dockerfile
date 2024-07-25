@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8080
 
 # DEFINE ENVIRONMENT VARIABLE
-ENV PYTHONUNBUFFERED=1
+ENV CLIENT_NAME='demo'
+ENV REGION='australia-southeast1'
+ENV GOOGLE_CLOUD_PROJECT='abcdataz'
 
 # RUN APP.PY WHEN THE CONTAINER LAUNCHES
 CMD ["python", "app.py"]

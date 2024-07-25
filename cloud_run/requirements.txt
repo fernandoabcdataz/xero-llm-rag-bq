@@ -1,7 +1,6 @@
 apache-beam[gcp]
 oauthlib
 requests
-logging
 requests-oauthlib
 google-cloud-storage
 google-auth

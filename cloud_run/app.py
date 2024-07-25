@@ -1,17 +1,17 @@
 from flask import Flask, request
 import logging
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, GoogleCloudOptions, WorkerOptions, SetupOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, GoogleCloudOptions, SetupOptions
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
 import requests
 import json
 from google.cloud import storage
 import time
+import os
 
 app = Flask(__name__)
 
-# Your existing Dataflow pipeline code
 CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
 CLIENT_SECRET = '42rkPKJFTtcVFpWQd1hrRVuOfeG-kSC2QElL3p_VdeIAyTBt'
 TOKEN_URL = 'https://identity.xero.com/connect/token'
@@ -104,44 +104,36 @@ class XeroOptions(PipelineOptions):
         parser.add_argument(
             '--client_name',
             required=True,
-            help='NAME OF THE CLIENT, USED IN BUCKET NAMING AND AS A PREFIX FOR DATAFLOW JOB NAME'
+            help='NAME OF THE CLIENT, USED IN BUCKET NAMING AND AS A PREFIX FOR JOB NAME'
         )
         parser.add_argument(
-            '--dataflow_region',
+            '--region',
             required=True,
-            help='THE REGION TO RUN THE DATAFLOW JOB IN'
-        )
-        parser.add_argument(
-            '--dataflow_zone',
-            required=True,
-            help='THE ZONE TO RUN THE DATAFLOW JOB IN'
+            help='THE REGION TO RUN THE JOB IN'
         )
 
 def run_pipeline():
-    pipeline_options = XeroOptions()
-    client_name = pipeline_options.view_as(XeroOptions).client_name
-    google_cloud_options = pipeline_options.view_as(GoogleCloudOptions)
-    project_id = google_cloud_options.project
+    # Read environment variables
+    client_name = os.getenv('CLIENT_NAME')
+    region = os.getenv('REGION')
+    project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 
     if not project_id:
         raise ValueError("please provide a PROJECT ID using --project argument")
 
-    region = pipeline_options.view_as(XeroOptions).dataflow_region
-    zone = pipeline_options.view_as(XeroOptions).dataflow_zone
     bucket_name = f"{project_id}--{client_name}--xero-data"
     create_bucket_if_not_exists(bucket_name, project_id, region)
 
-    options = pipeline_options.view_as(PipelineOptions)
-    options.view_as(StandardOptions).runner = 'DataflowRunner'
+    options = PipelineOptions()
+    options.view_as(StandardOptions).runner = 'DirectRunner'
+    google_cloud_options = options.view_as(GoogleCloudOptions)
+    google_cloud_options.project = project_id
     google_cloud_options.temp_location = f'gs://{bucket_name}/temp'
     google_cloud_options.job_name = f'{client_name}-xero-data-pipeline'
     google_cloud_options.region = region
 
-    worker_options = pipeline_options.view_as(WorkerOptions)
-    worker_options.zone = zone
-
-    pipeline_options.view_as(SetupOptions).setup_file = './setup.py'
-    p = beam.Pipeline(options=pipeline_options)
+    options.view_as(SetupOptions).setup_file = './setup.py'
+    p = beam.Pipeline(options=options)
 
     results = (
         p
