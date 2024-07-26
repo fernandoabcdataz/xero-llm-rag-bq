@@ -1,4 +1,6 @@
-service_account.json
+service-account.json
+
+terraform.tfvars
 
 # byte-compiled / optimized / DLL files
 __pycache__/

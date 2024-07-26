@@ -1,7 +1,0 @@
-# Ignore everything
-/data/
-/dataflow/
-
-# # But keep these files and directories
-# !/xero_api/*
-# !setup.py

@@ -1,21 +1,21 @@
 provider "google" {
-  project     = "abcdataz"
-  region      = "australia-southeast1"
+  project     = var.project
+  region      = var.region
   credentials = file("service-account.json")
 }
 
 resource "google_storage_bucket" "xero_data_bucket" {
-  name          = "abcdataz-xero-data"
-  location      = "australia-southeast1"
+  name          = "${var.project}-xero-data"
+  location      = var.region
   force_destroy = true
 }
 
 resource "google_secret_manager_secret" "client_id" {
-  secret_id = "client-id"
+  secret_id = "xero-client-id"
   replication {
     user_managed {
       replicas {
-        location = "australia-southeast1"
+        location = var.region
       }
     }
   }
@@ -23,15 +23,15 @@ resource "google_secret_manager_secret" "client_id" {
 
 resource "google_secret_manager_secret_version" "client_id_version" {
   secret      = google_secret_manager_secret.client_id.id
-  secret_data = "EAE32EE6A8514754AADF4BC8551CDFAA"
+  secret_data = var.xero_client_id
 }
 
 resource "google_secret_manager_secret" "client_secret" {
-  secret_id = "client-secret"
+  secret_id = "xero-client-secret"
   replication {
     user_managed {
       replicas {
-        location = "australia-southeast1"
+        location = var.region
       }
     }
   }
@@ -39,24 +39,24 @@ resource "google_secret_manager_secret" "client_secret" {
 
 resource "google_secret_manager_secret_version" "client_secret_version" {
   secret      = google_secret_manager_secret.client_secret.id
-  secret_data = "42rkPKJFTtcVFpWQd1hrRVuOfeG-kSC2QElL3p_VdeIAyTBt"
+  secret_data = var.xero_client_secret
 }
 
 resource "google_cloud_run_service" "xero_api" {
   name     = "xero-api"
-  location = "australia-southeast1"
+  location = var.region
 
   template {
     spec {
       containers {
-        image = "gcr.io/abcdataz/xero-api"
+        image = "gcr.io/${var.project}/xero-api"
         env {
           name  = "CLIENT_NAME"
-          value = "demo"
+          value = var.client_name
         }
         env {
           name = "GOOGLE_CLOUD_PROJECT"
-          value = "abcdataz"
+          value = var.project
         }
         env {
           name = "CLIENT_ID"
@@ -80,12 +80,17 @@ resource "google_cloud_run_service" "xero_api" {
           container_port = 8080
         }
       }
+      service_account_name = "terraform-sa@${var.project}.iam.gserviceaccount.com"
     }
   }
 
   traffic {
     percent         = 100
     latest_revision = true
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
