@@ -14,9 +14,9 @@ from google.cloud import secretmanager
 
 app = Flask(__name__)
 
-@app.route('/')
-def hello():
-    return 'Hello, World!'
+# @app.route('/')
+# def hello():
+#     return 'Hello, World!'
 
 def get_secret(secret_id):
     client = secretmanager.SecretManagerServiceClient()
@@ -33,9 +33,13 @@ if not CLIENT_ID or not CLIENT_SECRET:
 TOKEN_URL = 'https://identity.xero.com/connect/token'
 
 ENDPOINTS = {
-    'balance_sheet': 'https://api.xero.com/api.xro/2.0/Reports/BalanceSheet',
-    'bank_summary': 'https://api.xero.com/api.xro/2.0/Reports/BankSummary',
-    'profit_loss': 'https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss',
+    'bank_transactions': 'https://api.xero.com/api.xro/2.0/BankTransactions',
+    'contacts': 'https://api.xero.com/api.xro/2.0/Contacts',
+    'invoices': 'https://api.xero.com/api.xro/2.0/Invoices',
+    'journals': 'https://api.xero.com/api.xro/2.0/Journals',
+    'reports__balance_sheet': 'https://api.xero.com/api.xro/2.0/Reports/BalanceSheet',
+    'reports__bank_summary': 'https://api.xero.com/api.xro/2.0/Reports/BankSummary',
+    'reports__profit_and_loss': 'https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss',
 }
 
 def fetch_token():
@@ -118,14 +122,14 @@ def create_bucket_if_not_exists(bucket_name, project_id):
 
 def run_pipeline():
     try:
-        # Read environment variables
+        # read environment variables
         client_name = os.getenv('CLIENT_NAME')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
 
         if not client_name:
             raise ValueError("CLIENT_NAME environment variable is required")
         if not project_id:
-            raise ValueError("please provide a PROJECT ID using --project argument")
+            raise ValueError("PROJECT ID environment variable is required")
 
         logging.info(f"starting pipeline for client: {client_name}, project_id: {project_id}")
 
@@ -146,10 +150,10 @@ def run_pipeline():
         results | 'WriteToGCS' >> beam.ParDo(WriteJSONToGCS(bucket_name, client_name))
         p.run().wait_until_finish()
 
-        logging.info("PIPELINE COMPLETED SUCCESSFULLY")
+        logging.info("pipeline completed successfully")
 
     except Exception as e:
-        logging.error(f"Error running pipeline: {str(e)}")
+        logging.error(f"error running pipeline: {str(e)}")
         logging.error(traceback.format_exc())
         raise
 
@@ -157,10 +161,10 @@ def run_pipeline():
 def trigger_pipeline():
     try:
         run_pipeline()
-        return 'Pipeline started', 200
+        return 'pipeline started', 200
     except Exception as e:
-        logging.error(f"Error triggering pipeline: {str(e)}")
-        return 'Internal Server Error', 500
+        logging.error(f"error triggering pipeline: {str(e)}")
+        return 'internal server error', 500
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
