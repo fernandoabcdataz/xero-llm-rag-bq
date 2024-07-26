@@ -1,2 +1,0 @@
-[console_scripts]
-xero-pipeline = xero_api.xero:run_pipeline
