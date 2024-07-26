@@ -80,17 +80,12 @@ resource "google_cloud_run_service" "xero_api" {
           container_port = 8080
         }
       }
-      service_account_name = "terraform-sa@${var.project}.iam.gserviceaccount.com"
     }
   }
 
   traffic {
     percent         = 100
     latest_revision = true
-  }
-
-  lifecycle {
-    create_before_destroy = true
   }
 }
 
