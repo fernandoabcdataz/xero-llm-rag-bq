@@ -13,10 +13,6 @@ import traceback
 
 app = Flask(__name__)
 
-@app.route('/')
-def hello():
-    return 'Hello, World!'
-
 CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
 CLIENT_SECRET = '42rkPKJFTtcVFpWQd1hrRVuOfeG-kSC2QElL3p_VdeIAyTBt'
 TOKEN_URL = 'https://identity.xero.com/connect/token'
