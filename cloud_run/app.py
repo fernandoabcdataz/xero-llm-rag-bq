@@ -1,7 +1,7 @@
 from flask import Flask, request
 import logging
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, GoogleCloudOptions, SetupOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
 import requests
@@ -10,17 +10,29 @@ from google.cloud import storage
 import time
 import os
 import traceback
+from google.cloud import secretmanager
 
 app = Flask(__name__)
 
-CLIENT_ID = 'EAE32EE6A8514754AADF4BC8551CDFAA'
-CLIENT_SECRET = '42rkPKJFTtcVFpWQd1hrRVuOfeG-kSC2QElL3p_VdeIAyTBt'
+@app.route('/')
+def hello():
+    return 'Hello, World!'
+
+def get_secret(secret_id):
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{os.getenv('GOOGLE_CLOUD_PROJECT')}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(name=name)
+    return response.payload.data.decode('UTF-8')
+
+CLIENT_ID = get_secret('client-id')
+CLIENT_SECRET = get_secret('client-secret')
+
+if not CLIENT_ID or not CLIENT_SECRET:
+    raise ValueError("CLIENT_ID and CLIENT_SECRET are required")
+
 TOKEN_URL = 'https://identity.xero.com/connect/token'
 
 ENDPOINTS = {
-    # 'bank_transactions': 'https://api.xero.com/api.xro/2.0/BankTransactions',
-    # 'contacts': 'https://api.xero.com/api.xro/2.0/Contacts',
-    # 'employees': 'https://api.xero.com/api.xro/2.0/Employees',
     'balance_sheet': 'https://api.xero.com/api.xro/2.0/Reports/BalanceSheet',
     'bank_summary': 'https://api.xero.com/api.xro/2.0/Reports/BankSummary',
     'profit_loss': 'https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss',

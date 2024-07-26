@@ -6,3 +6,4 @@ google-cloud-storage
 google-auth
 google-auth-oauthlib
 Flask
+google-cloud-secret-manager
