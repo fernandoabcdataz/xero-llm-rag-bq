@@ -43,7 +43,7 @@ resource "google_secret_manager_secret_version" "client_secret_version" {
 }
 
 resource "google_cloud_run_service" "xero_api" {
-  name     = "xero-api"
+  name     = "${var.project}-${var.client_name}-xero-api"
   location = var.region
 
   template {
