@@ -100,7 +100,7 @@ class WriteJSONToGCS(beam.DoFn):
         logging.info("GCS client initialized and bucket accessed.")
 
     def process(self, element):
-        file_name = f"{self.client_name}/{element['endpoint_name']}.json"
+        file_name = f"{element['endpoint_name']}.json"
         blob = self.bucket.blob(file_name)
         blob.upload_from_string(element['file_content'], content_type='application/json')
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
@@ -119,7 +119,7 @@ def run_pipeline():
 
         logging.info(f"starting pipeline for client: {client_name}, project_id: {project_id}")
 
-        bucket_name = f"{project_id}--{client_name}--xero-data"
+        bucket_name = f"{project_id}-{client_name}-xero-data"
 
         options = PipelineOptions()
         options.view_as(StandardOptions).runner = 'DirectRunner'

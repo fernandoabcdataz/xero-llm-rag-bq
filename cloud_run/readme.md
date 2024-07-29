@@ -59,4 +59,8 @@ terraform apply
 ```
 
 8. Trigger Cloud Run
-CURL -X POST https://xero-api-pnyecjivxq-ts.a.run.app/run
+CURL -X POST https://abcdataz-demo-xero-api-pnyecjivxq-ts.a.run.app/run
+
+gcloud config set account fernando@abcdataz.com 
+docker buildx build --platform linux/amd64 -t gcr.io/abcdataz/xero-api --push .
+gcloud config set account terraform-sa@abcdataz.iam.gserviceaccount.com  
