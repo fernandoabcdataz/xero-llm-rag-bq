@@ -5,7 +5,7 @@ provider "google" {
 }
 
 resource "google_storage_bucket" "xero_data_bucket" {
-  name          = "${var.project}-xero-data"
+  name          = "${var.project}-${var.client_name}-xero-data"
   location      = var.region
   force_destroy = true
 }

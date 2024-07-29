@@ -14,18 +14,14 @@ from google.cloud import secretmanager
 
 app = Flask(__name__)
 
-# @app.route('/')
-# def hello():
-#     return 'Hello, World!'
-
 def get_secret(secret_id):
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{os.getenv('GOOGLE_CLOUD_PROJECT')}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(name=name)
     return response.payload.data.decode('UTF-8')
 
-CLIENT_ID = get_secret('client-id')
-CLIENT_SECRET = get_secret('client-secret')
+CLIENT_ID = get_secret('xero-client-id')
+CLIENT_SECRET = get_secret('xero-client-secret')
 
 if not CLIENT_ID or not CLIENT_SECRET:
     raise ValueError("CLIENT_ID and CLIENT_SECRET are required")
@@ -110,16 +106,6 @@ class WriteJSONToGCS(beam.DoFn):
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
         logging.info(f"File {file_name} saved to GCS.")
 
-def create_bucket_if_not_exists(bucket_name, project_id):
-    storage_client = storage.Client(project=project_id)
-    try:
-        bucket = storage_client.get_bucket(bucket_name)
-        print(f"Bucket {bucket_name} already exists")
-    except Exception:
-        bucket = storage_client.create_bucket(bucket_name)
-        print(f"Bucket {bucket_name} created")
-    return bucket
-
 def run_pipeline():
     try:
         # read environment variables
@@ -134,7 +120,6 @@ def run_pipeline():
         logging.info(f"starting pipeline for client: {client_name}, project_id: {project_id}")
 
         bucket_name = f"{project_id}--{client_name}--xero-data"
-        create_bucket_if_not_exists(bucket_name, project_id)
 
         options = PipelineOptions()
         options.view_as(StandardOptions).runner = 'DirectRunner'
