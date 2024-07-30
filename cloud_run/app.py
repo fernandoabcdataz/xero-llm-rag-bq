@@ -48,7 +48,14 @@ def fetch_data_from_endpoint(token, endpoint):
     headers = {'Authorization': f'Bearer {token["access_token"]}', 'Accept': 'application/json'}
     response = requests.get(endpoint, headers=headers)
     response.raise_for_status()
-    return response.json()
+    data = response.json()
+
+    # extract the first array or object in the json response
+    for value in data.values():
+        if isinstance(value, list):
+            return value
+        elif isinstance(value, dict):
+            return [value]
 
 class FetchDataFromEndpoints(beam.DoFn):
     def __init__(self, endpoints, client_id, client_secret, token_url):
@@ -67,27 +74,28 @@ class FetchDataFromEndpoints(beam.DoFn):
     def start_bundle(self):
         self.token = self.fetch_token()
         self.processed_all_endpoints = False
-        logging.info("Token fetched and bundle started.")
+        logging.info("token fetched and bundle started")
 
     def process(self, element):
         for name, endpoint in self.endpoints.items():
             if self.processed_all_endpoints:
                 break
-            logging.info(f"Fetching data from endpoint: {endpoint}")
+            logging.info(f"fetching data from endpoint: {endpoint}")
             start_time = time.time()
             data = fetch_data_from_endpoint(self.token, endpoint)
             end_time = time.time()
-            logging.info(f"Data fetched from {endpoint} in {end_time - start_time} seconds.")
+            logging.info(f"data fetched from {endpoint} in {end_time - start_time} seconds")
             if not data:
-                logging.info(f"No data received for endpoint: {name}. Assuming termination.")
+                logging.info(f"no data received for endpoint: {name}... assuming termination")
                 self.processed_all_endpoints = True
                 break
-            file_content = json.dumps(data, indent=2)
+            # convert list of dicts to newline-separated JSON objects
+            json_lines = "\n".join(json.dumps(item) for item in data)
             yield {
                 'endpoint_name': name,
-                'file_content': file_content
+                'file_content': json_lines
             }
-            logging.info(f"Data processed for endpoint: {name}")
+            logging.info(f"data processed for endpoint: {name}")
 
 class WriteJSONToGCS(beam.DoFn):
     def __init__(self, bucket_name, client_name):
@@ -104,7 +112,7 @@ class WriteJSONToGCS(beam.DoFn):
         blob = self.bucket.blob(file_name)
         blob.upload_from_string(element['file_content'], content_type='application/json')
         yield f"saved {file_name} to gs://{self.bucket_name}/{file_name}"
-        logging.info(f"File {file_name} saved to GCS.")
+        logging.info(f"file {file_name} saved to GCS")
 
 def run_pipeline():
     try:
