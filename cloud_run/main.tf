@@ -112,7 +112,7 @@ resource "google_cloud_scheduler_job" "xero_api_scheduler" {
 
   http_target {
     http_method = "POST"
-    uri         = "https://${google_cloud_run_service.xero_api.status[0].url}"
+    uri         = "https://${google_cloud_run_service.xero_api.status[0].url}/run"
     
     # oidc_token {
     #   service_account_email = {}
