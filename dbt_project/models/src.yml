@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: landing
+    database: abcdataz
+    schema: demo
+    tables:
+      - name: contacts

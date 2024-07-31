@@ -1,3 +1,4 @@
 beam-env/
 dbt-env/
 .DS_Store
+service-account.json

@@ -1,7 +1,7 @@
 provider "google" {
   project     = var.project
   region      = var.region
-  credentials = file("service-account.json")
+  credentials = file("../service-account.json")
 }
 
 resource "google_storage_bucket" "xero_data_bucket" {
