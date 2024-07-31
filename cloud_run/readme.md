@@ -35,6 +35,12 @@ gcloud projects add-iam-policy-binding abcdataz \
 gcloud projects add-iam-policy-binding abcdataz \
 --member="serviceAccount:terraform-sa@abcdataz.iam.gserviceaccount.com" \
 --role="roles/storage.admin"
+gcloud projects add-iam-policy-binding abcdataz \
+--member="serviceAccount:terraform-sa@abcdataz.iam.gserviceaccount.com" \
+--role="roles/cloudscheduler.admin"
+gcloud projects add-iam-policy-binding abcdataz \
+--member="serviceAccount:terraform-sa@abcdataz.iam.gserviceaccount.com" \
+--role="roles/run.invoker"
 gcloud iam service-accounts keys create service-account.json --iam-account terraform-sa@abcdataz.iam.gserviceaccount.com
 ```
 

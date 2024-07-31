@@ -103,3 +103,21 @@ data "google_iam_policy" "noauth" {
     members = ["allUsers"]
   }
 }
+
+resource "google_cloud_scheduler_job" "xero_api_scheduler" {
+  name        = "${var.project}-${var.client_name}-xero-api-scheduler"
+  description = "Scheduler job to invoke Cloud Run service every hour"
+  schedule    = "0 * * * *"
+  time_zone   = "UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${google_cloud_run_service.xero_api.status[0].url}"
+    
+    # oidc_token {
+    #   service_account_email = {}
+    # }
+  }
+
+  attempt_deadline = "320s"
+}
