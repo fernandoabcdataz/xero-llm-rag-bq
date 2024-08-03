@@ -1,6 +1,6 @@
 {{ config(
-    materialized="table",
-    schema="refined"
+    materialized="view",
+    schema="raw"
 ) }}
 
 /*

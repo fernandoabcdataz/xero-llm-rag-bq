@@ -6,3 +6,4 @@ sources:
     schema: demo
     tables:
       - name: contacts
+      - name: invoices
