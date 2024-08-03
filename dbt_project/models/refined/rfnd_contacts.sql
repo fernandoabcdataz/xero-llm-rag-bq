@@ -5,9 +5,11 @@
 
 SELECT
   ContactID
+  , ContactStatus
   , Name
   , FirstName
   , LastName
-  , ContactStatus
   , EmailAddress
+  , IsSupplier
+  , IsCustomer
 FROM {{ ref('contacts')}}
