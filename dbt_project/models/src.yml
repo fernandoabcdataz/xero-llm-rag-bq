@@ -7,3 +7,4 @@ sources:
     tables:
       - name: contacts
       - name: invoices
+      - name: bank_transactions

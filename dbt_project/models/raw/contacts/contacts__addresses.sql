@@ -4,22 +4,17 @@
 ) }}
 
 SELECT
-  ContactID
-  , address.AddressType
-  , address.AddressLine1
-  , address.AddressLine2
-  , address.AddressLine3
-  , address.AddressLine4
-  , address.PostalCode
-  , address.City
-  , address.Region
-  , address.Country
-  , address.AttentionTo
+  ContactID AS contact_id
+  , Addresses.AddressLine1 AS address_line_1
+  , Addresses.AddressLine2 AS address_line_2
+  , Addresses.AddressLine3 AS address_line_3
+  , Addresses.AddressLine4 AS address_line_4
+  , Addresses.AddressType AS address_type
+  , Addresses.AttentionTo AS attention_to
+  , Addresses.City AS city
+  , Addresses.Country AS country
+  , Addresses.PostalCode AS postal_code
+  , Addresses.Region AS region
 FROM 
-  {{ ref('contacts')}},
-  UNNEST(Addresses) AS address
-WHERE 
-  LENGTH(address.AddressLine1) > 0 OR
-  LENGTH(address.AddressLine2) > 0 OR
-  LENGTH(address.AddressLine3) > 0 OR
-  LENGTH(address.AddressLine4) > 0
+  {{ source('landing', 'contacts')}},
+  UNNEST(Addresses) AS Addresses

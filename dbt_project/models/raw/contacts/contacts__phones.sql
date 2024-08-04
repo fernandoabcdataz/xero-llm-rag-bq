@@ -4,13 +4,11 @@
 ) }}
 
 SELECT
-  ContactID
-  , phone.PhoneCountryCode
-  , phone.PhoneAreaCode
-  , phone.PhoneNumber
-  , phone.PhoneType
+  ContactID AS contact_id
+  , Phones.PhoneAreaCode AS phone_area_code
+  , Phones.PhoneCountryCode AS phone_country_code
+  , Phones.PhoneNumber AS phone_number
+  , Phones.PhoneType AS phone_type
 FROM 
-  {{ ref('contacts')}},
-  UNNEST(Phones) AS phone
-WHERE
-  phone.PhoneNumber IS NOT NULL
+  {{ source('landing', 'contacts')}},
+  UNNEST(Phones) AS Phones
