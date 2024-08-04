@@ -9,3 +9,4 @@ sources:
       - name: invoices
       - name: bank_transactions
       - name: journals
+      - name: reports__balance_sheet
