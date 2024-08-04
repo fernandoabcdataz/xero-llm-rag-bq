@@ -31,4 +31,5 @@ SELECT
   , Type AS type
   , UpdatedDateUTC AS updated_date_utc
   , Url AS url
-FROM {{ source('landing', 'invoices')}}
+FROM
+  {{ source('landing', 'invoices')}}

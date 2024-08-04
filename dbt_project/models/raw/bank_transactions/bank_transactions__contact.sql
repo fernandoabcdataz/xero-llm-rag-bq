@@ -12,4 +12,5 @@ SELECT
   , Contact.HasValidationErrors AS has_validation_errors
   , Contact.Name AS name
   , Contact.Phones AS phones
-FROM {{ source('landing', 'bank_transactions')}}
+FROM 
+  {{ source('landing', 'bank_transactions')}}

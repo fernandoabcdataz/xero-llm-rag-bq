@@ -8,4 +8,5 @@ SELECT
   , BankAccount.AccountID AS account_id
   , BankAccount.Code AS code
   , BankAccount.Name AS name
-FROM {{ source('landing', 'bank_transactions')}}
+FROM 
+  {{ source('landing', 'bank_transactions')}}

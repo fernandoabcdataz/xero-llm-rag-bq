@@ -8,3 +8,4 @@ sources:
       - name: contacts
       - name: invoices
       - name: bank_transactions
+      - name: journals

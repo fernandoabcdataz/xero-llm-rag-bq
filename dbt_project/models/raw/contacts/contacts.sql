@@ -21,4 +21,5 @@ SELECT
   , Name AS name
   , TaxNumber AS tax_number
   , UpdatedDateUTC AS updated_date_utc
-FROM {{ source('landing', 'contacts')}}
+FROM 
+  {{ source('landing', 'contacts')}}

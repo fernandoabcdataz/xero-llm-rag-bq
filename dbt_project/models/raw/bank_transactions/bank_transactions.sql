@@ -20,4 +20,5 @@ SELECT
   , Type AS type
   , UpdatedDateUTC AS updated_date_utc
   , Url AS url
-FROM {{ source('landing', 'bank_transactions')}}
+FROM
+  {{ source('landing', 'bank_transactions')}}
